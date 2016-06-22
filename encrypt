@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [ ! -d "target" ]; then
+  echo "Please build the project first using 'mvn clean install'"
+  exit 1
+fi
+
+if [ $1 == help ]; then
+  echo "Usage: ./encrypt <plainTextPassword> <propertiesFilePath>"
+  echo "This <propertiesFilePath> will default to 'secureVault.properties' and sample file will be there."
+  echo "Properties file should contains below properties"
+  echo "keystore.identity.location=[keystoreLocation]";
+  echo "keystore.identity.store.username=[keystoreUsername(optional)]";
+  echo "keystore.identity.store.password=[keystorePassword]";
+  echo "keystore.identity.alias=[keyAlias]";
+  echo "keystore.identity.type=[keystoreType]";
+  echo "keystore.identity.parameters=[storeParams(optional)]";
+  echo "keystore.identity.key.username=[keyUsername(optional)]";
+  echo "keystore.identity.key.password=[keyPassword(optional)]";
+  echo "cipher.algorithm=[cipherAlgorithm(optional)]";
+  exit 1
+fi
+
+java -cp "target/*" org.wso2.custom.crypto.util.VaultEncrypt $1 $2
