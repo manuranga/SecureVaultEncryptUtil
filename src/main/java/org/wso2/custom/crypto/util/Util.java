@@ -47,4 +47,25 @@ public class Util {
         }
         return properties;
     }
+
+    /**
+     * Helper method to validate store password and key password
+     *
+     * @param identityStorePass
+     * @param identityKeyPass
+     * @return if valid true, false otherwise
+     */
+    public static boolean validatePasswords(String identityStorePass,
+                                      String identityKeyPass) {
+        boolean isValid = false;
+        if (identityStorePass != null && !"".equals(identityStorePass) &&
+            identityKeyPass != null && !"".equals(identityKeyPass)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Identity Store Password " +
+                          "and Identity Store private key Password cannot be found.");
+            }
+            isValid = true;
+        }
+        return isValid;
+    }
 }

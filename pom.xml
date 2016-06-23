@@ -33,6 +33,11 @@
             <artifactId>org.wso2.securevault</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk16</artifactId>
+            <version>1.46</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -65,7 +70,7 @@
                             <overWriteReleases>false</overWriteReleases>
                             <overWriteSnapshots>false</overWriteSnapshots>
                             <overWriteIfNewer>true</overWriteIfNewer>
-                            <includeArtifactIds>axiom-api,org.wso2.securevault,commons-logging,log4j</includeArtifactIds>
+                            <includeArtifactIds>axiom-api,bcprov-jdk16,org.wso2.securevault,commons-logging,log4j</includeArtifactIds>
                         </configuration>
                     </execution>
                 </executions>

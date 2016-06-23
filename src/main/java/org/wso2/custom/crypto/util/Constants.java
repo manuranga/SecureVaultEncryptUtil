@@ -1,5 +1,7 @@
 package org.wso2.custom.crypto.util;
 
+import org.wso2.securevault.EncodingType;
+
 /**
  * This is a interface to hold required constant values.
  */
@@ -26,5 +28,22 @@ public interface Constants {
     public final static String CIPHER_ALGORITHM_DEFAULT = "RSA";
 
     public final static String PROPERTIES_FILE_PATH_DEFAULT = "secureVault.properties";
-
+    /**
+     * Cipher type ('symmetric' or 'asymmetric')
+     */
+    public final static String CIPHER_TYPE = "cipher.type";
+    /**
+     * Security provider, can use providers like BouncyCastle.
+     */
+    public final static String SECURITY_PROVIDER = "security.provider";
+    /**
+     * encode type of the given value to be encoded
+     */
+    public final static String INPUT_ENCODE_TYPE = "input.encode.type";
+    public final static EncodingType INPUT_ENCODE_TYPE_DEFAULT = null;
+    /**
+     * encode type of the final outcome.
+     */
+    public final static String OUTPUT_ENCODE_TYPE = "output.encode.type";
+    public final static EncodingType OUTPUT_ENCODE_TYPE_DEFAULT = EncodingType.BASE64;
 }

@@ -2,8 +2,18 @@ package org.wso2.custom.crypto.util;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.wso2.securevault.CipherFactory;
+import org.wso2.securevault.CipherOperationMode;
+import org.wso2.securevault.DecryptionProvider;
+import org.wso2.securevault.EncodingType;
+import org.wso2.securevault.EncryptionProvider;
+import org.wso2.securevault.SecureVaultException;
+import org.wso2.securevault.commons.MiscellaneousUtil;
+import org.wso2.securevault.definition.CipherInformation;
 import org.wso2.securevault.definition.IdentityKeyStoreInformation;
 import org.wso2.securevault.definition.KeyStoreInformationFactory;
+import org.wso2.securevault.keystore.IdentityKeyStoreWrapper;
 import sun.misc.BASE64Encoder;
 
 import javax.crypto.BadPaddingException;
@@ -19,6 +29,7 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.util.Properties;
@@ -36,7 +47,7 @@ public class VaultEncrypt {
      * @throws Exception
      */
     public static void main(String[] args) throws Exception {
-        String[] arg = {"WSO2", "Pass"};
+//        String[] arg = {"smb://user1:pass@smb.host/project1"};
         encrypt(args);
     }
 
@@ -65,11 +76,11 @@ public class VaultEncrypt {
         Properties properties = Util.loadProperties(propertiesFile);
 
         String keyStoreFile = null;
-        String keyType = null;
-        String aliasName = null;
-        String password = null;
         String provider = null;
-        Cipher cipher = null;
+        String algorithm = null;
+        String cipherType = null;
+        EncodingType inType = null;
+        EncodingType outType = null;
 
         keyStoreFile = properties.getProperty(Constants.IDENTITY_KEY_STORE);
 
@@ -85,56 +96,68 @@ public class VaultEncrypt {
             return;
         }
 
-        keyType = properties.getProperty(Constants.IDENTITY_KEY_STORE_TYPE);
-
-        aliasName = properties.getProperty(Constants.IDENTITY_KEY_STORE_ALIAS);
-
         // Create a KeyStore Information for private key entry KeyStore
         IdentityKeyStoreInformation identityInformation =
                 KeyStoreInformationFactory.createIdentityKeyStoreInformation(properties);
 
 
-        password = identityInformation.getKeyPasswordProvider().getResolvedSecret();
-        if (password == null) {
-            log.error("KeyStore password can not be null");
-            return;
-        }
-        if (keyType == null) {
-            log.error("KeyStore Type can not be null");
-            return;
-        }
-
         try {
-            KeyStore primaryKeyStore = getKeyStore(keyStoreFile, password, keyType, provider);
-            Certificate certs = primaryKeyStore.getCertificate(aliasName);
-            cipher = Cipher.getInstance("RSA");
-            cipher.init(Cipher.ENCRYPT_MODE, certs);
-            byte[] encryptedPassword = cipher.doFinal(args[0].getBytes());
-            BASE64Encoder encoder = new BASE64Encoder();
-            String encodedValue = encoder.encode(encryptedPassword);
+
+            String identityKeyPass = null;
+            String identityStorePass = null;
+            if (identityInformation != null) {
+                identityKeyPass = identityInformation
+                        .getKeyPasswordProvider().getResolvedSecret();
+                identityStorePass = identityInformation
+                        .getKeyStorePasswordProvider().getResolvedSecret();
+            }
+
+            if (!Util.validatePasswords(identityStorePass, identityKeyPass)) {
+                log.error("Either Identity or Trust keystore password is mandatory" +
+                          " in order to initialized secret manager.");
+                return;
+            }
+
+            IdentityKeyStoreWrapper identityKeyStoreWrapper = new IdentityKeyStoreWrapper();
+            identityKeyStoreWrapper.init(identityInformation, identityKeyPass);
+
+            algorithm = MiscellaneousUtil.getProperty(properties, Constants.CIPHER_ALGORITHM,
+                                                      Constants.CIPHER_ALGORITHM_DEFAULT);
+
+            provider = MiscellaneousUtil.getProperty(properties, Constants.SECURITY_PROVIDER,
+                                                     null);
+            cipherType = MiscellaneousUtil.getProperty(properties, Constants.CIPHER_TYPE,
+                                                       null);
+            inType = MiscellaneousUtil.getProperty(properties, Constants.INPUT_ENCODE_TYPE,
+                                                   Constants.INPUT_ENCODE_TYPE_DEFAULT, EncodingType.class);
+            outType = MiscellaneousUtil.getProperty(properties, Constants.OUTPUT_ENCODE_TYPE,
+                                                    Constants.OUTPUT_ENCODE_TYPE_DEFAULT, EncodingType.class);
+
+            CipherInformation cipherInformation = new CipherInformation();
+            cipherInformation.setAlgorithm(algorithm);
+            cipherInformation.setCipherOperationMode(CipherOperationMode.ENCRYPT);
+            cipherInformation.setInType(EncodingType.BASE64); //TODO
+            cipherInformation.setType(cipherType);
+            cipherInformation.setInType(inType);
+            cipherInformation.setOutType(outType);
+
+            if (provider != null && !provider.isEmpty()) {
+                if (provider.equals("BC")) {
+                    Security.addProvider(new BouncyCastleProvider());
+                    cipherInformation.setProvider(provider);
+                }
+                //todo need to add other providers if there are any.
+            }
+
+            EncryptionProvider baseCipher = CipherFactory.createCipher(cipherInformation, identityKeyStoreWrapper);
+            byte[] encryptedPassword = baseCipher.encrypt(args[0].getBytes());
+            String encodedValue = new String(encryptedPassword);
             log.info("Encrypted and Base64 encoded value - " + encodedValue);
             log.info("******************************** End encryption ********************************");
-        } catch (InvalidKeyException e) {
-            log.error("Invalid key provided, " + e.getMessage(), e);
-        } catch (NoSuchAlgorithmException e) {
-            log.error("No such algorithm, " + e.getMessage(), e);
-        } catch (KeyStoreException e) {
-            log.error("Keystore error, " + e.getMessage(), e);
-        } catch (NoSuchPaddingException e) {
-            log.error("Padding error, " + e.getMessage(), e);
-        } catch (BadPaddingException e) {
-            log.error("Bad padding, " + e.getMessage(), e);
-        } catch (IllegalBlockSizeException e) {
-            log.error("Illegal blocking size, " + e.getMessage(), e);
-        } catch (CertificateException e) {
-            log.error("Certificate Error, " + e.getMessage(), e);
-        } catch (NoSuchProviderException e) {
-            log.error("No such provider, " + e.getMessage(), e);
-        } catch (IOException e) {
-            log.error("IO error, " + e.getMessage(), e);
+        } catch (SecureVaultException e) {
+            log.error("SecureVault exception, " + e.getMessage(), e);
         }
     }
-
 
     /**
      * get the primary key store instant
